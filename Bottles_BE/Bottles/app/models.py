@@ -6,6 +6,7 @@
 #   * Remove `managed = False` lines if you wish to allow Django to create, modify, and delete the table
 # Feel free to rename the models, but don't rename db_table values or field names.
 from django.db import models
+from datetime import datetime
 
 
 class Users(models.Model):
@@ -14,7 +15,7 @@ class Users(models.Model):
     name = models.CharField(max_length=30)
     email = models.CharField(unique=True, max_length=40)
     preface = models.TextField(blank=True, null=True)
-    create_at = models.DateTimeField()
+    create_at = models.DateTimeField(default=datetime.now)
 
     class Meta:
         managed = False
