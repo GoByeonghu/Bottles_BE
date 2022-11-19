@@ -6,8 +6,24 @@ from rest_framework.parsers import JSONParser
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
+import jwt, datetime
+
 from app.models import Users
 from app.serializers import UsersSerializer,UsersSerializer_SignUp
+from local_settings import JWT_SECRET_KEY
+
+def Authenticate(request):
+    print(datetime.datetime.now())
+    token = request.COOKIES.get('token')
+    if not token :
+        return print("없음")
+    try:
+        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=['HS256'])
+    except jwt.ExpiredSignatureError:
+        return print("변조됨")
+
+    user = Users.objects.get(id = payload['id'])
+    return(user.id)
 
 @csrf_exempt
 def user_list(request):
@@ -15,6 +31,7 @@ def user_list(request):
     List all users, or create a new user.
     only for test
     """
+    Authenticate(request)
 
     #return all users data
     if request.method == 'GET':
@@ -54,3 +71,33 @@ class SignupView(APIView):
         user.save()
         users.save()
         """
+#로그인
+class LoginView(APIView):
+    def post(self, request):
+        #아이디 및 비밀번호 확인
+        try:
+            user = Users.objects.get(id=request.data['id'])
+            if(user.pw != request.data['pw']):
+                return Response({ "error": "wrong pw"},status=409)
+        except Users.DoesNotExist:
+            return Response({ "error": "does not exist id"},status=409)
+        except Users.MultipleObjectsReturned:
+            return Response({ "fatal error": "interserver error.(duplicated id)"},status=500)
+        #jwt생성
+        payload = {
+            'id' : user.id,
+            'exp' : datetime.datetime.now() + datetime.timedelta(minutes=60),
+            'iat' : datetime.datetime.now()
+        }
+
+        #키 수정 필요
+        print(f"log1")
+        token = jwt.encode(payload,JWT_SECRET_KEY,algorithm='HS256')
+        print(f"log2: {token}")
+        res=Response()
+        res.set_cookie(key= 'token', value=token, httponly= True)
+        res.data = {
+            'token' : token
+        }
+
+        return res
