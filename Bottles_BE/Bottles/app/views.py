@@ -9,7 +9,7 @@ from rest_framework.response import Response
 import jwt, datetime
 
 from app.models import Users
-from app.serializers import UsersSerializer,UsersSerializer_SignUp
+from app.serializers import UsersSerializer,UsersSerializer_SignUp,UsersSerializer_Profile
 from local_settings import JWT_SECRET_KEY
 
 def Authenticate(request):
@@ -71,6 +71,49 @@ class SignupView(APIView):
         user.save()
         users.save()
         """
+
+#회원정보
+class ReadProfileView(APIView):
+    def get_object(self, id):
+        try:
+            return Users.objects.get(id=id)
+        except:
+            return Response({"error":"Unauthorized request"}, status=401)
+
+    def get(self, request, format=None):
+        user = self.get_object(id=Authenticate(request))
+        serializer = UsersSerializer_Profile(user)
+        return Response(serializer.data, status=200)
+  
+#회원정보 수정
+class UpdateProfileView(APIView):
+    def put(self, request, format=None):
+        user = Users.objects.get(id=Authenticate(request))
+
+        if(len(user.id) > 30):
+            return Response({"error":""}, {"target":["id"]}, status=409)
+        if(len(user.preface) > 450):
+            return Response({"error":""}, {"target":["preface"]}, status=409)
+
+        if(Users.objects.filter(id=request.data['id']).exists()):
+            return Response({"error":"already exist id"}, status=409)
+
+        serializer = UsersSerializer_Profile(user, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"update successfully"}, status=200)
+
+#회원정보 삭제
+class DeleteProfileView(APIView):
+    def delete(self, request, format=None):
+        user = Users.objects.get(id=Authenticate(request))
+        if(user.pw != request.data['pw']):
+            return Response({"error":"Unauthorized request"}, status=401)
+        else:
+            user.delete()
+            return Response({"delete successfully"}, status=200)
+
+
 #로그인
 class LoginView(APIView):
     def post(self, request):
@@ -78,11 +121,11 @@ class LoginView(APIView):
         try:
             user = Users.objects.get(id=request.data['id'])
             if(user.pw != request.data['pw']):
-                return Response({ "error": "wrong pw"},status=409)
+                return Response({"error": "wrong pw"}, status=409)
         except Users.DoesNotExist:
-            return Response({ "error": "does not exist id"},status=409)
+            return Response({"error": "does not exist id"}, status=409)
         except Users.MultipleObjectsReturned:
-            return Response({ "fatal error": "interserver error.(duplicated id)"},status=500)
+            return Response({"fatal error": "interserver error.(duplicated id)"}, status=500)
         #jwt생성
         payload = {
             'id' : user.id,

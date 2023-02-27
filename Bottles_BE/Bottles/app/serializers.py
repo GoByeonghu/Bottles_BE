@@ -10,3 +10,8 @@ class UsersSerializer_SignUp(serializers.ModelSerializer):
     class Meta:
         model = Users
         fields = ['id', 'pw', 'name', 'email', 'preface']
+
+class UsersSerializer_Profile(serializers.ModelSerializer):
+    class Meta:
+        model = Users
+        fields = ['id', 'name', 'email', 'preface']
